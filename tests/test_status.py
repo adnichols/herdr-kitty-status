@@ -32,8 +32,11 @@ class StatusTests(unittest.TestCase):
         }
         self.assertEqual(status.status_counts(snapshot), (2, 1, 1))
 
-    def test_formats_machine_readable_title(self):
-        self.assertEqual(status.format_title("Herdr", (2, 1, 3)), "Herdr W:2 B:1 D:3")
+    def test_formats_machine_readable_title_with_hostname(self):
+        self.assertEqual(
+            status.format_title("Herdr", "dever", (2, 1, 3)),
+            "Herdr (dever) W:2 B:1 D:3",
+        )
 
 
 class DummyForeground:
@@ -47,7 +50,7 @@ class DummyFormatter:
 class RendererTests(unittest.TestCase):
     def test_colors_only_count_values(self):
         title = renderer.draw_title(
-            {"title": "Herdr W:12 B:3 D:4", "fmt": DummyFormatter()}
+            {"title": "Herdr (dever) W:12 B:3 D:4", "fmt": DummyFormatter()}
         )
         self.assertIn(f"W:{renderer.WORKING}12<tab-fg>", title)
         self.assertIn(f"B:{renderer.BLOCKED}3<tab-fg>", title)

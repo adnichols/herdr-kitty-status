@@ -3,9 +3,9 @@
 Show live [Herdr](https://herdr.dev/) agent counts in a [Kitty](https://sw.kovidgoyal.net/kitty/) tab without wrapping or scraping individual agents.
 
 ```text
-Herdr W:2 B:1 D:3
-        ^   ^   ^
-      yellow orange green
+Herdr (dever) W:2 B:1 D:3
+                ^   ^   ^
+              yellow orange green
 ```
 
 - **W** — agents currently working
@@ -18,7 +18,7 @@ The count values are colored while Kitty's configured tab style, including Power
 
 The repository contains two small integrations:
 
-1. A Herdr plugin reads semantic agent state from `session.snapshot` and sets the foreground client's outer terminal title.
+1. A Herdr plugin reads semantic agent state from `session.snapshot` and sets the foreground client's outer terminal title, including the Herdr host name.
 2. A Kitty `draw_title` hook recognizes that title and colors the three count values.
 
 The plugin is event-driven. It refreshes on agent-state changes, pane lifecycle events, and focus changes. The included `herdr-kitty` launcher schedules one initial refresh while the Herdr client attaches, so every launcher invocation starts with a current title. It does not run a polling daemon and does not inspect agent output.
@@ -107,11 +107,14 @@ The renderer returns unrelated titles unchanged. It does not replace Kitty's `ta
 
 ## Configuration
 
-Set a different title prefix in the environment inherited by the Herdr server:
+Set a different title prefix or host label in the environment inherited by the Herdr server:
 
 ```sh
 export HERDR_KITTY_STATUS_PREFIX="Agents"
+export HERDR_KITTY_STATUS_HOSTNAME="build-host"
 ```
+
+The host label defaults to the system hostname without its domain suffix. The override is useful when an SSH alias is shorter or clearer than the host's configured name.
 
 Colors are defined near the top of `kitty/tab_bar.py` as 24-bit SGR foreground colors:
 

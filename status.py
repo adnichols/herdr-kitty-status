@@ -51,9 +51,9 @@ def status_counts(snapshot_result: Dict[str, Any]) -> Tuple[int, int, int]:
     return working, blocked, done
 
 
-def format_title(prefix: str, counts: Tuple[int, int, int]) -> str:
+def format_title(prefix: str, hostname: str, counts: Tuple[int, int, int]) -> str:
     working, blocked, done = counts
-    return f"{prefix} W:{working} B:{blocked} D:{done}"
+    return f"{prefix} ({hostname}) W:{working} B:{blocked} D:{done}"
 
 
 @contextmanager
@@ -73,6 +73,11 @@ def update_lock() -> Iterator[None]:
 def main() -> int:
     socket_path = os.environ.get("HERDR_SOCKET_PATH", str(DEFAULT_SOCKET))
     prefix = os.environ.get("HERDR_KITTY_STATUS_PREFIX", DEFAULT_PREFIX).strip() or DEFAULT_PREFIX
+    default_hostname = socket.gethostname().split(".", 1)[0]
+    hostname = (
+        os.environ.get("HERDR_KITTY_STATUS_HOSTNAME", default_hostname).strip()
+        or default_hostname
+    )
 
     try:
         # Herdr can launch several event hooks together. Serialize the complete
@@ -80,7 +85,7 @@ def main() -> int:
         # newer count after a burst of events.
         with update_lock():
             snapshot = request(socket_path, "session.snapshot")
-            title = format_title(prefix, status_counts(snapshot))
+            title = format_title(prefix, hostname, status_counts(snapshot))
             request(socket_path, "client.window_title.set", {"title": title})
     except (ConnectionError, FileNotFoundError, OSError, RuntimeError, json.JSONDecodeError) as error:
         print(f"herdr-kitty-status: {error}", file=sys.stderr)
