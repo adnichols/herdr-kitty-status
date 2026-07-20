@@ -3,16 +3,12 @@
 Show live [Herdr](https://herdr.dev/) agent counts in a [Kitty](https://sw.kovidgoyal.net/kitty/) tab without wrapping or scraping individual agents.
 
 ```text
-Herdr (dever) W:2 B:1 D:3
-                ^   ^   ^
-              yellow orange green
+Herdr (dever) 2 / 1 / 3
+              ^   ^   ^
+         working blocked done
 ```
 
-- **W** — agents currently working
-- **B** — agents blocked and waiting for attention
-- **D** — agents that finished while unseen
-
-The count values are colored while Kitty's configured tab style, including Powerline, remains intact.
+The three colored values are always ordered as **working / blocked / done-unseen**. A host-local configuration can provide a short label and tab colors while Kitty's configured tab style, including Powerline, remains intact.
 
 ## How it works
 
@@ -107,16 +103,30 @@ The renderer returns unrelated titles unchanged. It does not replace Kitty's `ta
 
 ## Configuration
 
-Set a different title prefix or host label in the environment inherited by the Herdr server:
+Create this dependency-free JSON configuration on each Herdr host:
+
+```text
+~/.config/herdr-kitty-status/config.json
+```
+
+```json
+{
+  "label": "dever",
+  "tab_background": "#243447",
+  "tab_foreground": "#f8f8f2"
+}
+```
+
+All fields are optional. Colors must use `#RRGGBB` format. The label defaults to the system hostname without its domain suffix; a short label such as an SSH alias keeps tabs compact. The remote plugin carries the validated display settings in its title update, and the local Kitty renderer consumes them without displaying the metadata.
+
+The config path can be overridden with `HERDR_KITTY_STATUS_CONFIG`. Environment variables inherited by the Herdr server can still override the title prefix and host label:
 
 ```sh
 export HERDR_KITTY_STATUS_PREFIX="Agents"
 export HERDR_KITTY_STATUS_HOSTNAME="build-host"
 ```
 
-The host label defaults to the system hostname without its domain suffix. The override is useful when an SSH alias is shorter or clearer than the host's configured name.
-
-Colors are defined near the top of `kitty/tab_bar.py` as 24-bit SGR foreground colors:
+Counter colors are defined near the top of `kitty/tab_bar.py` as 24-bit SGR foreground colors:
 
 ```python
 WORKING = "\x1b[38;2;249;226;175m"
@@ -143,7 +153,7 @@ herdr plugin uninstall adnichols.kitty-status
 - Uses Herdr's local Unix socket only.
 - Does not read terminal scrollback, prompts, source code, or agent output.
 - Does not send telemetry or make network requests at runtime.
-- Publishes only three aggregate integer counts in the terminal title.
+- Publishes only the configured display label/colors and three aggregate integer counts in the terminal title.
 - Plugin commands run with normal user permissions, as documented by Herdr.
 
 ## Limitations
@@ -151,7 +161,8 @@ herdr plugin uninstall adnichols.kitty-status
 - Herdr updates its foreground attached client. With multiple simultaneous clients, the title follows whichever client Herdr considers foreground.
 - Running plain `herdr` still receives event-driven updates, but the initial title refresh is guaranteed only when launching through `herdr-kitty` or manually invoking the refresh action.
 - `done` follows Herdr semantics: completed and not yet seen. Focusing the relevant tab or pane can transition it to `idle`, reducing the done count.
-- Kitty tab titles are plain text. Per-count colors come from the local `tab_bar.py` renderer, not from ANSI sequences embedded by the remote process.
+- Kitty tab titles are plain text. Count and host colors come from the local `tab_bar.py` renderer, not from ANSI sequences embedded by the remote process.
+- A configured background colors the rendered title region. Powerline separators remain controlled by Kitty's tab-bar style.
 
 ## Development
 

@@ -6,6 +6,7 @@ from __future__ import annotations
 import fcntl
 import json
 import os
+import re
 import socket
 import sys
 import tempfile
@@ -15,6 +16,7 @@ from typing import Any, Dict, Iterator, Optional, Tuple
 
 DEFAULT_SOCKET = Path.home() / ".config" / "herdr" / "herdr.sock"
 DEFAULT_PREFIX = "Herdr"
+HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
 def request(
@@ -51,9 +53,53 @@ def status_counts(snapshot_result: Dict[str, Any]) -> Tuple[int, int, int]:
     return working, blocked, done
 
 
-def format_title(prefix: str, hostname: str, counts: Tuple[int, int, int]) -> str:
+def load_config(path: Path) -> Dict[str, str]:
+    if not path.exists():
+        return {}
+
+    with path.open("r", encoding="utf-8") as config_file:
+        raw_config = json.load(config_file)
+    if not isinstance(raw_config, dict):
+        raise ValueError(f"config must contain a JSON object: {path}")
+
+    config: Dict[str, str] = {}
+    label = raw_config.get("label")
+    if label is not None:
+        if not isinstance(label, str) or not label.strip():
+            raise ValueError("config 'label' must be a non-empty string")
+        label = label.strip()
+        if len(label) > 64 or not all(character.isprintable() for character in label):
+            raise ValueError("config 'label' must be at most 64 printable characters")
+        config["label"] = label
+
+    for key in ("tab_background", "tab_foreground"):
+        color = raw_config.get(key)
+        if color is None:
+            continue
+        if not isinstance(color, str) or HEX_COLOR.fullmatch(color) is None:
+            raise ValueError(f"config '{key}' must be a color in #RRGGBB format")
+        config[key] = color.lower()
+
+    return config
+
+
+def format_title(
+    prefix: str,
+    hostname: str,
+    counts: Tuple[int, int, int],
+    tab_background: Optional[str] = None,
+    tab_foreground: Optional[str] = None,
+) -> str:
     working, blocked, done = counts
-    return f"{prefix} ({hostname}) W:{working} B:{blocked} D:{done}"
+    title = f"{prefix} ({hostname}) {working} / {blocked} / {done}"
+    style = []
+    if tab_background:
+        style.append(f"bg={tab_background.lstrip('#')}")
+    if tab_foreground:
+        style.append(f"fg={tab_foreground.lstrip('#')}")
+    if style:
+        title += " [herdr-kitty " + " ".join(style) + "]"
+    return title
 
 
 @contextmanager
@@ -73,21 +119,45 @@ def update_lock() -> Iterator[None]:
 def main() -> int:
     socket_path = os.environ.get("HERDR_SOCKET_PATH", str(DEFAULT_SOCKET))
     prefix = os.environ.get("HERDR_KITTY_STATUS_PREFIX", DEFAULT_PREFIX).strip() or DEFAULT_PREFIX
-    default_hostname = socket.gethostname().split(".", 1)[0]
-    hostname = (
-        os.environ.get("HERDR_KITTY_STATUS_HOSTNAME", default_hostname).strip()
-        or default_hostname
+    config_home = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))
+    config_path = Path(
+        os.environ.get(
+            "HERDR_KITTY_STATUS_CONFIG",
+            str(config_home / "herdr-kitty-status" / "config.json"),
+        )
     )
 
     try:
+        config = load_config(config_path)
+        default_hostname = socket.gethostname().split(".", 1)[0]
+        hostname = (
+            os.environ.get(
+                "HERDR_KITTY_STATUS_HOSTNAME",
+                config.get("label", default_hostname),
+            ).strip()
+            or default_hostname
+        )
         # Herdr can launch several event hooks together. Serialize the complete
         # snapshot-and-title operation so an older process cannot overwrite a
         # newer count after a burst of events.
         with update_lock():
             snapshot = request(socket_path, "session.snapshot")
-            title = format_title(prefix, hostname, status_counts(snapshot))
+            title = format_title(
+                prefix,
+                hostname,
+                status_counts(snapshot),
+                config.get("tab_background"),
+                config.get("tab_foreground"),
+            )
             request(socket_path, "client.window_title.set", {"title": title})
-    except (ConnectionError, FileNotFoundError, OSError, RuntimeError, json.JSONDecodeError) as error:
+    except (
+        ConnectionError,
+        FileNotFoundError,
+        OSError,
+        RuntimeError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as error:
         print(f"herdr-kitty-status: {error}", file=sys.stderr)
         return 1
 
