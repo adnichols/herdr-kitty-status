@@ -1,0 +1,29 @@
+#!/bin/sh
+# HERDR_KITTY_STATUS_WRAPPER
+# Launch Herdr normally and refresh the status title once its client is attached.
+set -eu
+
+HERDR_BIN=${HERDR_BIN:-herdr}
+PLUGIN_ID="adnichols.kitty-status"
+
+if ! command -v "$HERDR_BIN" >/dev/null 2>&1; then
+    echo "herdr-kitty: herdr executable not found" >&2
+    exit 1
+fi
+
+# Herdr must remain in the foreground to own the terminal. A short-lived helper
+# retries the refresh action while the server/client connection is starting.
+(
+    attempt=0
+    while [ "$attempt" -lt 20 ]; do
+        sleep 0.25
+        if "$HERDR_BIN" plugin action invoke refresh --plugin "$PLUGIN_ID" \
+            >/dev/null 2>&1; then
+            exit 0
+        fi
+        attempt=$((attempt + 1))
+    done
+    exit 0
+) &
+
+exec "$HERDR_BIN" "$@"

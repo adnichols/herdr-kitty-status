@@ -1,0 +1,27 @@
+id = "adnichols.kitty-status"
+name = "Kitty Agent Status"
+version = "0.1.0"
+min_herdr_version = "0.7.4"
+description = "Show Herdr working, blocked, and done agent counts in a Kitty tab."
+platforms = ["linux", "macos"]
+
+[[actions]]
+id = "refresh"
+title = "Refresh Kitty agent status"
+command = ["python3", "status.py"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["python3", "status.py"]
+
+[[events]]
+on = "pane.closed"
+command = ["python3", "status.py"]
+
+[[events]]
+on = "workspace.closed"
+command = ["python3", "status.py"]
+
+[[events]]
+on = "pane.focused"
+command = ["python3", "status.py"]
