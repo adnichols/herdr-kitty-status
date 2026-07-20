@@ -2,6 +2,7 @@ import importlib.util
 import json
 import tempfile
 import unittest
+from collections import namedtuple
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -99,6 +100,19 @@ class RendererTests(unittest.TestCase):
         self.assertIn(f"{renderer.WORKING}12<tab-fg>", title)
         self.assertIn(f"{renderer.BLOCKED}3<tab-fg>", title)
         self.assertIn(f"{renderer.DONE}4<tab-fg>", title)
+
+    def test_extracts_host_colors_for_powerline_separator(self):
+        title = "Herdr (dever) 12 / 3 / 4 [herdr-kitty bg=123456 fg=abcdef]"
+        self.assertEqual(renderer.title_colors(title), (0x123456, 0xABCDEF))
+
+        Tab = namedtuple(
+            "Tab", "title active_bg inactive_bg active_fg inactive_fg"
+        )
+        tab = Tab(title, None, None, None, None)
+        self.assertEqual(
+            renderer.styled_tab(tab),
+            Tab(title, 0x123456, 0x123456, 0xABCDEF, 0xABCDEF),
+        )
 
     def test_applies_host_style_and_hides_metadata(self):
         title = renderer.draw_title(

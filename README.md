@@ -87,6 +87,7 @@ The installer adds this managed block to `kitty.conf`:
 
 ```conf
 # BEGIN herdr-kitty-status
+tab_bar_style custom
 tab_title_template "{custom}"
 # END herdr-kitty-status
 ```
@@ -99,7 +100,7 @@ It installs the renderer at:
 
 If an unrelated or locally modified `tab_bar.py` already exists, the installer refuses to overwrite it. Merge the repository's `draw_title()` function into the existing renderer manually. Uninstall also preserves managed files whose content changed after installation.
 
-The renderer returns unrelated titles unchanged. It does not replace Kitty's `tab_bar_style`, so existing styles such as `powerline` continue to work.
+The renderer returns unrelated titles unchanged. It uses Kitty's custom tab-bar entry point while delegating layout to Kitty's built-in Powerline renderer, including the configured `tab_powerline_style`. This lets host backgrounds flow through the Powerline separators instead of leaving a mismatched wedge.
 
 ## Configuration
 
@@ -162,7 +163,7 @@ herdr plugin uninstall adnichols.kitty-status
 - Running plain `herdr` still receives event-driven updates, but the initial title refresh is guaranteed only when launching through `herdr-kitty` or manually invoking the refresh action.
 - `done` follows Herdr semantics: completed and not yet seen. Focusing the relevant tab or pane can transition it to `idle`, reducing the done count.
 - Kitty tab titles are plain text. Count and host colors come from the local `tab_bar.py` renderer, not from ANSI sequences embedded by the remote process.
-- A configured background colors the rendered title region. Powerline separators remain controlled by Kitty's tab-bar style.
+- A configured background colors the rendered title region and its Powerline transition. Other Powerline layout details remain controlled by Kitty's `tab_powerline_style`.
 
 ## Development
 

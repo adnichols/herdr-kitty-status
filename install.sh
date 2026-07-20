@@ -142,13 +142,40 @@ install_kitty_renderer() {
     mv "$temporary" "$renderer"
     checksum "$renderer" > "$checksum_file"
 
+    expected_old_block=$(printf '%s\n%s\n%s' \
+        "$marker_begin" \
+        'tab_title_template "{custom}"' \
+        "$marker_end")
+    expected_block=$(printf '%s\n%s\n%s\n%s' \
+        "$marker_begin" \
+        'tab_bar_style custom' \
+        'tab_title_template "{custom}"' \
+        "$marker_end")
+
     if ! grep -qF "$marker_begin" "$kitty_conf"; then
         cp "$kitty_conf" "$kitty_conf.herdr-kitty-status.bak"
-        {
-            printf '\n%s\n' "$marker_begin"
-            printf '%s\n' 'tab_title_template "{custom}"'
-            printf '%s\n' "$marker_end"
-        } >> "$kitty_conf"
+        printf '\n%s\n' "$expected_block" >> "$kitty_conf"
+    else
+        actual_block=$(awk '
+            $0 == "# BEGIN herdr-kitty-status" { capture = 1 }
+            capture { print }
+            $0 == "# END herdr-kitty-status" { exit }
+        ' "$kitty_conf")
+        if [ "$actual_block" = "$expected_old_block" ]; then
+            temporary_conf=$(mktemp "${TMPDIR:-/tmp}/herdr-kitty-config.XXXXXX")
+            awk '
+                $0 == "# BEGIN herdr-kitty-status" {
+                    print
+                    print "tab_bar_style custom"
+                    next
+                }
+                { print }
+            ' "$kitty_conf" > "$temporary_conf"
+            mv "$temporary_conf" "$kitty_conf"
+        elif [ "$actual_block" != "$expected_block" ]; then
+            echo "Preserving modified Kitty config block in: $kitty_conf" >&2
+            echo "Add 'tab_bar_style custom' inside the managed block manually." >&2
+        fi
     fi
 
     kitty_pid=${KITTY_PID:-}

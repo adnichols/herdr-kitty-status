@@ -35,8 +35,9 @@ remove_managed_file "$renderer" "$renderer_checksum"
 remove_managed_file "$wrapper" "$wrapper_checksum"
 
 if [ -f "$kitty_conf" ] && grep -qF "# BEGIN herdr-kitty-status" "$kitty_conf"; then
-    expected_block=$(printf '%s\n%s\n%s' \
+    expected_block=$(printf '%s\n%s\n%s\n%s' \
         '# BEGIN herdr-kitty-status' \
+        'tab_bar_style custom' \
         'tab_title_template "{custom}"' \
         '# END herdr-kitty-status')
     actual_block=$(awk '
