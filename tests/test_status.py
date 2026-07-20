@@ -1,5 +1,7 @@
 import importlib.util
 import json
+import shutil
+import subprocess
 import tempfile
 import unittest
 from collections import namedtuple
@@ -77,6 +79,33 @@ class StatusTests(unittest.TestCase):
             path.write_text('{"tab_background": "blue"}', encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "#RRGGBB"):
                 status.load_config(path)
+
+
+class LauncherTests(unittest.TestCase):
+    def test_finds_herdr_beside_launcher_when_path_omits_local_bin(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bin_dir = Path(directory)
+            launcher = bin_dir / "herdr-kitty"
+            herdr = bin_dir / "herdr"
+            shutil.copy(ROOT / "herdr-kitty", launcher)
+            herdr.write_text(
+                "#!/bin/sh\n"
+                "if [ \"${1:-}\" = plugin ]; then exit 0; fi\n"
+                "printf 'launched:%s\\n' \"$*\"\n",
+                encoding="utf-8",
+            )
+            launcher.chmod(0o755)
+            herdr.chmod(0o755)
+
+            result = subprocess.run(
+                [str(launcher), "status"],
+                check=False,
+                capture_output=True,
+                text=True,
+                env={"PATH": "/usr/bin:/bin"},
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout, "launched:status\n")
 
 
 class DummyForeground:

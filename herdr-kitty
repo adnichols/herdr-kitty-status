@@ -3,10 +3,19 @@
 # Launch Herdr normally and refresh the status title once its client is attached.
 set -eu
 
-HERDR_BIN=${HERDR_BIN:-herdr}
+HERDR_BIN=${HERDR_BIN:-}
 PLUGIN_ID="adnichols.kitty-status"
 
-if ! command -v "$HERDR_BIN" >/dev/null 2>&1; then
+if [ -z "$HERDR_BIN" ]; then
+    script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)
+    if [ -x "$script_dir/herdr" ]; then
+        HERDR_BIN="$script_dir/herdr"
+    elif command -v herdr >/dev/null 2>&1; then
+        HERDR_BIN=herdr
+    fi
+fi
+
+if [ -z "$HERDR_BIN" ] || ! command -v "$HERDR_BIN" >/dev/null 2>&1; then
     echo "herdr-kitty: herdr executable not found" >&2
     exit 1
 fi

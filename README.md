@@ -60,7 +60,7 @@ curl -fsSL https://raw.githubusercontent.com/adnichols/herdr-kitty-status/main/i
   | sh -s -- --plugin-only
 ```
 
-Start remote sessions with `~/.local/bin/herdr-kitty`. The remote plugin updates Herdr's foreground client title. That title travels through the attached terminal session, and the local Kitty renderer colors it.
+Start remote sessions with `~/.local/bin/herdr-kitty`. The launcher resolves a sibling `~/.local/bin/herdr` executable before consulting `PATH`, so direct non-interactive SSH commands work even when the remote shell omits `~/.local/bin`. The remote plugin updates Herdr's foreground client title. That title travels through the attached terminal session, and the local Kitty renderer colors it.
 
 ### Install directly with Herdr
 
